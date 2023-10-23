@@ -6,8 +6,8 @@ on:
       - '**/Cargo.lock'
   pull_request:
     branches:
-      master
-      3.2.0_downgraded_deps
+        - 3.2.0_downgraded_deps
+        - master
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
@@ -21,4 +21,3 @@ jobs:
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
