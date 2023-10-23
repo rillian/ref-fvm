@@ -97,7 +97,7 @@ fn memory_and_data<'a, K: Kernel>(
 macro_rules! charge_syscall_gas {
     ($kernel:expr) => {
         let charge = $kernel.price_list().on_syscall();
-        let _ = $kernel
+        $kernel
             .charge_gas(&charge.name, charge.compute_gas)
             .map_err(Abort::from_error_as_fatal)?;
     };
@@ -170,7 +170,11 @@ macro_rules! impl_bind_syscalls {
                         let result = match syscall(ctx $(, $t)*).into() {
                             Ok(Ok(value)) => {
                                 log::trace!("syscall {}::{}: ok", module, name);
-                                unsafe { *(memory.as_mut_ptr().offset(ret as isize) as *mut Ret::Value) = value };
+                                unsafe {
+                                    // We're writing into a user-specified pointer, so avoid
+                                    // derefering it as it may not be aligned.
+                                    (memory.as_mut_ptr().offset(ret as isize) as *mut Ret::Value).write_unaligned(value);
+                                }
                                 data.last_error = None;
                                 Ok(0)
                             },

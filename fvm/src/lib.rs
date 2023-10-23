@@ -40,6 +40,7 @@ pub mod system_actor;
 
 mod eam_actor;
 mod history_map;
+mod ipld;
 pub mod trace;
 
 use cid::multihash::{Code, MultihashDigest};
@@ -77,9 +78,7 @@ mod test {
     impl Rand for DummyExterns {
         fn get_chain_randomness(
             &self,
-            _pers: i64,
             _round: fvm_shared::clock::ChainEpoch,
-            _entropy: &[u8],
         ) -> anyhow::Result<[u8; 32]> {
             let msg = "mel was here".as_bytes();
             let mut out = [0u8; 32];
@@ -89,9 +88,7 @@ mod test {
 
         fn get_beacon_randomness(
             &self,
-            _pers: i64,
             _round: fvm_shared::clock::ChainEpoch,
-            _entropy: &[u8],
         ) -> anyhow::Result<[u8; 32]> {
             todo!()
         }
@@ -133,7 +130,7 @@ mod test {
 
         let actors_cid = bs.put_cbor(&(1, manifest_cid), Code::Blake2b256).unwrap();
 
-        let mc = NetworkConfig::new(fvm_shared::version::NetworkVersion::V18)
+        let mc = NetworkConfig::new(fvm_shared::version::NetworkVersion::V21)
             .override_actors(actors_cid)
             .for_epoch(0, 0, root);
 

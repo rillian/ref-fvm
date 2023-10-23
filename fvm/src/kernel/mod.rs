@@ -63,7 +63,6 @@ pub trait Kernel:
     + NetworkOps
     + RandomnessOps
     + SelfOps
-    + SendOps
     + LimiterOps
     + 'static
 {
@@ -97,6 +96,23 @@ pub trait Kernel:
 
     /// The kernel's underlying "machine".
     fn machine(&self) -> &<Self::CallManager as CallManager>::Machine;
+
+    /// Sends a message to another actor.
+    /// The method type parameter K is the type of the kernel to instantiate for
+    /// the receiving actor. This is necessary to support wrapping a kernel, so the outer
+    /// kernel can specify its Self as the receiver's kernel type, rather than the wrapped
+    /// kernel specifying its Self.
+    /// This method is part of the Kernel trait so it can refer to the Self::CallManager
+    /// associated type necessary to constrain K.
+    fn send<K: Kernel<CallManager = Self::CallManager>>(
+        &mut self,
+        recipient: &Address,
+        method: u64,
+        params: BlockId,
+        value: &TokenAmount,
+        gas_limit: Option<Gas>,
+        flags: SendFlags,
+    ) -> Result<SendResult>;
 }
 
 /// Network-related operations.
@@ -150,7 +166,7 @@ pub trait IpldBlockOps {
 /// Depends on BlockOps to read and write blocks in the state tree.
 pub trait SelfOps: IpldBlockOps {
     /// Get the state root.
-    fn root(&self) -> Result<Cid>;
+    fn root(&mut self) -> Result<Cid>;
 
     /// Update the state-root.
     ///
@@ -160,10 +176,8 @@ pub trait SelfOps: IpldBlockOps {
     /// The balance of the receiver.
     fn current_balance(&self) -> Result<TokenAmount>;
 
-    /// Deletes the executing actor from the state tree, transferring any balance to beneficiary.
-    /// Aborts if the beneficiary does not exist.
-    /// May only be called by the actor itself.
-    fn self_destruct(&mut self, beneficiary: &Address) -> Result<()>;
+    /// Deletes the executing actor from the state tree, burning any remaining balance if requested.
+    fn self_destruct(&mut self, burn_unspent: bool) -> Result<()>;
 }
 
 /// Actors operations whose scope of action is actors other than the calling
@@ -207,19 +221,6 @@ pub trait ActorOps {
 
     /// Returns the balance associated with an actor id
     fn balance_of(&self, actor_id: ActorID) -> Result<TokenAmount>;
-}
-
-/// Operations to send messages to other actors.
-pub trait SendOps {
-    fn send(
-        &mut self,
-        recipient: &Address,
-        method: u64,
-        params: BlockId,
-        value: &TokenAmount,
-        gas_limit: Option<Gas>,
-        flags: SendFlags,
-    ) -> Result<SendResult>;
 }
 
 /// Operations to query the circulating supply.
@@ -282,9 +283,6 @@ pub trait CryptoOps {
         pieces: &[PieceInfo],
     ) -> Result<Cid>;
 
-    /// Verifies a sector seal proof.
-    fn verify_seal(&self, vi: &SealVerifyInfo) -> Result<bool>;
-
     /// Verifies a window proof of spacetime.
     fn verify_post(&self, verify_info: &WindowPoStVerifyInfo) -> Result<bool>;
 
@@ -323,24 +321,18 @@ pub trait CryptoOps {
 /// Randomness queries.
 pub trait RandomnessOps {
     /// Randomness returns a (pseudo)random byte array drawing from the latest
-    /// ticket chain from a given epoch and incorporating requisite entropy.
+    /// ticket chain from a given epoch.
     /// This randomness is fork dependant but also biasable because of this.
     fn get_randomness_from_tickets(
         &self,
-        personalization: i64,
         rand_epoch: ChainEpoch,
-        entropy: &[u8],
     ) -> Result<[u8; RANDOMNESS_LENGTH]>;
 
     /// Randomness returns a (pseudo)random byte array drawing from the latest
-    /// beacon from a given epoch and incorporating requisite entropy.
+    /// beacon from a given epoch.
     /// This randomness is not tied to any fork of the chain, and is unbiasable.
-    fn get_randomness_from_beacon(
-        &self,
-        personalization: i64,
-        rand_epoch: ChainEpoch,
-        entropy: &[u8],
-    ) -> Result<[u8; RANDOMNESS_LENGTH]>;
+    fn get_randomness_from_beacon(&self, rand_epoch: ChainEpoch)
+        -> Result<[u8; RANDOMNESS_LENGTH]>;
 }
 
 /// Debugging APIs.
@@ -370,5 +362,10 @@ pub trait LimiterOps {
 /// Eventing APIs.
 pub trait EventOps {
     /// Records an event emitted throughout execution.
-    fn emit_event(&mut self, raw_evt: &[u8]) -> Result<()>;
+    fn emit_event(
+        &mut self,
+        event_headers: &[fvm_shared::sys::EventEntry],
+        raw_key: &[u8],
+        raw_val: &[u8],
+    ) -> Result<()>;
 }

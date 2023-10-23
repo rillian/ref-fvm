@@ -381,9 +381,7 @@ fn for_each() {
         .unwrap();
     assert_eq!(x, indexes.len());
 
-    // Iteration again will be read diff with go-interop, since they do not cache
     new_amt.for_each(|_, _: &BytesDe| Ok(())).unwrap();
-
     assert_eq!(
         c.to_string().as_str(),
         "bafy2bzaceanqxtbsuyhqgxubiq6vshtbhktmzp2if4g6kxzttxmzkdxmtipcm"
@@ -431,6 +429,17 @@ fn for_each_ranged() {
         assert_eq!(next_key, None);
         assert_eq!(retrieved_values, indexes[start_val as usize..]);
         assert_eq!(count, retrieved_values.len() as u64);
+    }
+
+    // Iterate out of bounds
+    for i in [RANGE, RANGE + 1, 2 * RANGE, 8 * RANGE] {
+        let (count, next_key) = a
+            .for_each_while_ranged(Some(i), None, |_, _: &BytesDe| {
+                panic!("didn't expect to iterate")
+            })
+            .unwrap();
+        assert_eq!(count, 0);
+        assert_eq!(next_key, None);
     }
 
     // Iterate over amt with dirty cache with different page sizes

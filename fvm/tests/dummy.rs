@@ -25,7 +25,7 @@ use fvm_shared::version::NetworkVersion;
 use fvm_shared::{ActorID, IDENTITY_HASH};
 use multihash::{Code, Multihash};
 
-pub const STUB_NETWORK_VER: NetworkVersion = NetworkVersion::V18;
+pub const STUB_NETWORK_VER: NetworkVersion = NetworkVersion::V21;
 
 /// Unimplemented and empty `Externs` impl
 pub struct DummyExterns;
@@ -35,18 +35,14 @@ impl Externs for DummyExterns {}
 impl Rand for DummyExterns {
     fn get_chain_randomness(
         &self,
-        _pers: i64,
         _round: fvm_shared::clock::ChainEpoch,
-        _entropy: &[u8],
     ) -> anyhow::Result<[u8; 32]> {
         todo!()
     }
 
     fn get_beacon_randomness(
         &self,
-        _pers: i64,
         _round: fvm_shared::clock::ChainEpoch,
-        _entropy: &[u8],
     ) -> anyhow::Result<[u8; 32]> {
         todo!()
     }
@@ -287,14 +283,6 @@ impl CallManager for DummyCallManager {
         _value: &fvm_shared::econ::TokenAmount,
         _gas_limit: Option<Gas>,
         _read_only: bool,
-    ) -> kernel::Result<InvocationResult> {
-        // Ok(InvocationResult::Return(None))
-        todo!()
-    }
-
-    fn with_transaction(
-        &mut self,
-        _f: impl FnOnce(&mut Self) -> kernel::Result<InvocationResult>,
     ) -> kernel::Result<InvocationResult> {
         // Ok(InvocationResult::Return(None))
         todo!()

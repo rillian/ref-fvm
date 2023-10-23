@@ -1,7 +1,22 @@
 # Changelog
 
+Changes to the reference FVM's HAMT implementation.
+
 ## [Unreleased]
 
+## 0.8.0 [2023-08-18)
+
+Breaking Changes:
+
+- Deprecate default bitwidths in the HAMT
+  - Users must now always specify the bitwidth
+- Add support for the Hamt version 0 datastructure, for historical purposes.
+
+## 0.7.0 [2023-06-28)
+
+Breaking Changes:
+
+- Update cid/multihash. This is a breaking change as it affects the API.
 - Add `min_data_depth` option to reserve the top levels of the HAMT for links, free of key-value pairs.
 
 ## 0.6.1 [2022-11-14]
