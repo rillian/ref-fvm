@@ -8,7 +8,7 @@ use fvm::executor::DefaultExecutor;
 use fvm::externs::Externs;
 use fvm::machine::{DefaultMachine, Machine, MachineContext, NetworkConfig};
 use fvm::state_tree::{ActorState, StateTree};
-use fvm::{init_actor, system_actor, DefaultKernel};
+use fvm::{init_actor, system_actor};
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_encoding::{ser, CborStore};
 use fvm_shared::address::{Address, Protocol};
@@ -23,6 +23,7 @@ use multihash::Code;
 use crate::builtin::{
     fetch_builtin_code_cid, set_burnt_funds_account, set_eam_actor, set_init_actor, set_sys_actor,
 };
+use crate::custom_kernel::DefaultCustomKernel;
 use crate::dummy::DummyExterns;
 use crate::error::Error::{FailedToFlushTree, NoManifestInformation};
 
@@ -35,7 +36,7 @@ lazy_static! {
 pub trait Store: Blockstore + Sized + 'static {}
 
 pub type IntegrationExecutor<B, E> =
-    DefaultExecutor<DefaultKernel<DefaultCallManager<DefaultMachine<B, E>>>>;
+    DefaultExecutor<DefaultCustomKernel<DefaultCallManager<DefaultMachine<B, E>>>>;
 
 pub type Account = (ActorID, Address);
 
@@ -291,15 +292,14 @@ where
         // Custom configuration.
         configure_mc(&mut mc);
 
-        let engine = EnginePool::new_default((&mc.network.clone()).into())?;
-        engine.acquire().preload(&blockstore, &self.code_cids)?;
+        let engine = EnginePool::new((&mc.network.clone()).into())?;
+        engine.acquire().preload_all(&blockstore, &self.code_cids)?;
 
         let machine = DefaultMachine::new(&mc, blockstore, externs)?;
 
-        let executor =
-            DefaultExecutor::<DefaultKernel<DefaultCallManager<DefaultMachine<B, E>>>>::new(
-                engine, machine,
-            )?;
+        let executor = DefaultExecutor::<
+            DefaultCustomKernel<DefaultCallManager<DefaultMachine<B, E>>>,
+        >::new(engine, machine)?;
 
         self.executor = Some(executor);
         self.ready = true;

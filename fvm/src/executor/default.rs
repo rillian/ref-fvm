@@ -16,7 +16,7 @@ use fvm_shared::{ActorID, IPLD_RAW, METHOD_SEND};
 use num_traits::Zero;
 
 use super::{ApplyFailure, ApplyKind, ApplyRet, Executor};
-use crate::call_manager::{backtrace, Backtrace, CallManager, InvocationResult};
+use crate::call_manager::{backtrace, Backtrace, CallManager, Entrypoint, InvocationResult};
 use crate::eam_actor::EAM_ACTOR_ID;
 use crate::engine::EnginePool;
 use crate::gas::{Gas, GasCharge, GasOutputs};
@@ -72,7 +72,7 @@ where
             };
 
         struct MachineExecRet {
-            result: crate::kernel::error::Result<InvocationResult>,
+            result: crate::kernel::Result<InvocationResult>,
             gas_used: u64,
             backtrace: Backtrace,
             exec_trace: ExecutionTrace,
@@ -141,17 +141,19 @@ where
                 )
             });
 
-            // Invoke the message. We charge for the return value internally if the call-stack depth
-            // is 1.
-            let result = cm.send::<K>(
-                sender_id,
-                msg.to,
-                msg.method_num,
-                params,
-                &msg.value,
-                None,
-                false,
-            );
+            let result = cm.with_transaction(|cm| {
+                // Invoke the message. We charge for the return value internally if the call-stack depth
+                // is 1.
+                cm.call_actor::<K>(
+                    sender_id,
+                    msg.to,
+                    Entrypoint::Invoke(msg.method_num),
+                    params,
+                    &msg.value,
+                    None,
+                    false,
+                )
+            });
 
             let (res, machine) = match cm.finish() {
                 (Ok(res), machine) => (res, machine),
@@ -305,7 +307,7 @@ where
             // This interface works for now because we know all actor CIDs
             // ahead of time, but with user-supplied code, we won't have that
             // guarantee.
-            engine_pool.acquire().preload(
+            engine_pool.acquire().preload_all(
                 machine.blockstore(),
                 machine.builtin_actors().builtin_actor_codes(),
             )?;
@@ -497,10 +499,7 @@ where
             }
 
             self.state_tree_mut()
-                .mutate_actor(addr, |act| {
-                    act.deposit_funds(amt);
-                    Ok(())
-                })
+                .mutate_actor(addr, |act| act.deposit_funds(amt).or_fatal())
                 .context("failed to lookup actor for transfer")?;
             Ok(())
         };
