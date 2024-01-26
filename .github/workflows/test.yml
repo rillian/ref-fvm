@@ -7,10 +7,10 @@ on:
       - master
       - 3.2.0_downgraded_deps
     pull_request:
-    branches:
-      - main
-      - master
-      - 3.2.0_downgraded_deps
+      branches:
+        - main
+        - master
+        - 3.2.0_downgraded_deps
 
 jobs:
   test:
