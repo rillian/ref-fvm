@@ -6,8 +6,9 @@ on:
       - '**/Cargo.lock'
   pull_request:
     branches:
-        - 3.2.0_downgraded_deps
+        - main
         - master
+        - 3.2.0_downgraded_deps
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
