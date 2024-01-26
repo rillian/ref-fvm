@@ -30,6 +30,7 @@ use crate::vm::{TestKernel, TestMachine, TestStatsRef};
 lazy_static! {
     static ref SKIP_TESTS: Vec<Regex> = vec![
         "0001-shark-01/.*", // nv17
+        "0002-hygge-01/.*", // nv18
         ".*/DisputeWindowedPoSt/Ok/.*", // we treat all posts as valid (fake proofs).
     ]
     .into_iter()
@@ -232,7 +233,7 @@ pub fn run_variant(
     // this explicitly.
     engine
         .acquire()
-        .preload(
+        .preload_all(
             machine.blockstore(),
             machine.builtin_actors().builtin_actor_codes(),
         )
